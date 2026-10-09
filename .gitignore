@@ -1,0 +1,17 @@
+# Binaries
+bin/
+distro/*.exe
+distro/bolttunnel-client-linux
+distro/bolttunnel-server-linux
+
+# Auth keys - NOOIT committen
+*.authkey
+authkey.txt
+tskey*.txt
+
+# Tailnet state
+tsnet-*/
+*.state
+
+# Logs
+*.log
