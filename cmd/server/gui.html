@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bolttunnel — verbindingsmonitor</title>
+<style>
+:root {
+  --bg:#1a1a1a;--surface:#242424;--surface2:#2e2e2e;
+  --border:#383838;--text:#e8e6e3;--muted:#888780;
+  --accent:#4a9eff;--good:#22c55e;--warn:#f59e0b;--bad:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:1.25rem;max-width:760px;margin:auto}
+h1{font-size:15px;font-weight:500;margin-bottom:1.25rem;color:var(--muted)}
+.led-bar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:1rem;cursor:pointer}
+.led-bar:hover{background:var(--surface2)}
+.led{width:12px;height:12px;border-radius:50%;flex-shrink:0;transition:background .4s}
+.led.good{background:var(--good);box-shadow:0 0 6px var(--good)}
+.led.warn{background:var(--warn);box-shadow:0 0 6px var(--warn)}
+.led.bad{background:var(--bad);box-shadow:0 0 6px var(--bad)}
+.led.unknown{background:var(--muted);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.led-label{flex:1;font-size:14px}
+.led-ms{font-size:13px;font-weight:500;color:var(--accent)}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:1rem}
+.tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 14px;font-size:13px;color:var(--muted);cursor:pointer}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel{display:none}
+.panel.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1rem}
+.card{background:var(--surface);border-radius:8px;padding:12px 14px}
+.card-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.card-val{font-size:22px;font-weight:500}
+.card-unit{font-size:12px;color:var(--muted);margin-left:2px}
+.card-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.chart-wrap{background:var(--surface);border-radius:8px;padding:14px;margin-bottom:1rem}
+.chart-title{font-size:12px;color:var(--muted);margin-bottom:8px}
+svg.spark{width:100%;height:60px}
+.events{background:var(--surface);border-radius:8px;overflow:hidden;margin-bottom:1rem}
+.ev{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.ev:last-child{border-bottom:none}
+.ev-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ev-time{color:var(--muted);font-size:12px;min-width:60px}
+.ev-msg{color:var(--muted);flex:1}
+.section-title{font-size:11px;color:var(--muted);margin:1rem 0 .4rem;text-transform:uppercase;letter-spacing:.05em}
+.cmd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:.5rem}
+.cmd-btn{padding:10px 12px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px}
+.cmd-btn:hover{background:var(--surface2)}
+.cmd-btn:disabled{opacity:.4;cursor:not-allowed}
+.cmd-btn.start{border-color:var(--good)}
+.cmd-btn.stop{border-color:var(--bad)}
+.cmd-btn.restart{border-color:var(--warn)}
+.cmd-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cmd-dot.start{background:var(--good)}
+.cmd-dot.stop{background:var(--bad)}
+.cmd-dot.restart{background:var(--warn)}
+.cmd-output{background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px;font-family:monospace;color:var(--muted);white-space:pre-wrap;max-height:120px;overflow-y:auto;margin-bottom:.5rem;display:none}
+.tunnel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.tunnel-card{background:var(--surface);border-radius:8px;padding:10px 12px}
+.tunnel-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.tunnel-led{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tunnel-led.up{background:var(--good);box-shadow:0 0 4px var(--good)}
+.tunnel-led.down{background:var(--bad);animation:pulse 1.4s ease-in-out infinite}
+.tunnel-led.unknown{background:var(--muted)}
+.tunnel-name{font-size:13px;font-weight:500;flex:1}
+.tunnel-ms{font-size:11px;color:var(--muted)}
+.tunnel-ports{font-size:11px;color:var(--muted);font-family:monospace}
+.check-btn{width:100%;padding:9px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;margin-bottom:1rem}
+.check-btn:hover{background:var(--surface)}
+.check-btn:disabled{opacity:.4;cursor:not-allowed}
+.check-list{background:var(--surface);border-radius:8px;overflow:hidden}
+.check-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.check-row:last-child{border-bottom:none}
+.check-name{flex:1;color:var(--muted)}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px}
+.badge.ok{background:#14532d44;color:var(--good)}
+.badge.warn{background:#78350f44;color:var(--warn)}
+.badge.fail{background:#7f1d1d44;color:var(--bad)}
+.note{font-size:12px;color:var(--muted);margin-top:.75rem;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>Bolttunnel — verbindingsmonitor</h1>
+
+<div class="led-bar" onclick="switchTab('diag',document.querySelector('[data-tab=diag]'))">
+  <div class="led unknown" id="led"></div>
+  <span class="led-label" id="led-label">verbinding meten...</span>
+  <span class="led-ms" id="led-ms"></span>
+</div>
+
+
+<div class="tabs">
+  <button class="tab active" data-tab="status" onclick="switchTab('status',this)">Status</button>
+  <button class="tab" data-tab="diag" onclick="switchTab('diag',this)">Verbinding</button>
+</div>
+
+<div class="panel active" id="panel-status">
+  <div class="grid">
+    <div class="card"><div class="card-label">Latency</div><div class="card-val" id="m-lat">—<span class="card-unit">ms</span></div><div class="card-sub" id="m-avg">gem. —</div></div>
+    <div class="card"><div class="card-label">Jitter</div><div class="card-val" id="m-jit">—<span class="card-unit">ms</span></div><div class="card-sub">variatie</div></div>
+    <div class="card"><div class="card-label">Packet loss</div><div class="card-val" id="m-loss">—<span class="card-unit">%</span></div></div>
+    <div class="card"><div class="card-label">Dropouts</div><div class="card-val" id="m-drop">0</div><div class="card-sub">laatste 2 min</div></div>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">Latency — laatste 60 metingen</div>
+    <svg class="spark" id="spark" viewBox="0 0 600 60" preserveAspectRatio="none"></svg>
+  </div>
+  <div class="events" id="events">
+    <div class="ev"><div class="ev-dot unknown" style="background:var(--muted)"></div><span class="ev-time">—</span><span class="ev-msg">Wachten op eerste meting...</span></div>
+  </div>
+  <div class="section-title">Server beheer</div>
+  <div class="cmd-grid" id="cmd-grid"><span style="color:var(--muted);font-size:13px">Verbinden met server...</span></div>
+  <div class="cmd-output" id="cmd-output"></div>
+  <div class="section-title">Getunnelde services</div>
+  <div class="tunnel-grid" id="tunnel-grid">
+    <div class="tunnel-card"><div class="tunnel-top"><div class="tunnel-led unknown"></div><span class="tunnel-name">Laden...</span></div></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-diag">
+  <button class="check-btn" id="check-btn" onclick="runDiag()">Volledige verbindingscheck uitvoeren</button>
+  <div class="check-list" id="check-list" style="display:none"></div>
+  <p class="note" id="check-note"></p>
+</div>
+
+<script>
+var MAX_EV = 5;
+var lastSampleCount = 0;
+
+function setHTML(id, html) {
+  var el = document.getElementById(id);
+  if (el && el.innerHTML !== html) el.innerHTML = html;
+}
+
+function setText(id, text) {
+  var el = document.getElementById(id);
+  if (el && el.textContent !== text) el.textContent = text;
+}
+var events = [];
+var lastLed = 'unknown';
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var panel = document.getElementById('panel-' + id);
+  if (panel) panel.classList.add('active');
+}
+
+function ts() {
+  var d = new Date();
+  return d.getHours().toString().padStart(2,'0') + ':' +
+         d.getMinutes().toString().padStart(2,'0') + ':' +
+         d.getSeconds().toString().padStart(2,'0');
+}
+
+function addEvent(type, msg) {
+  events.unshift({type: type, msg: msg, t: ts()});
+  if (events.length > MAX_EV) events.pop();
+  document.getElementById('events').innerHTML = events.map(function(e) {
+    return '<div class="ev"><div class="ev-dot" style="background:' +
+      (e.type === 'good' ? 'var(--good)' : e.type === 'warn' ? 'var(--warn)' : 'var(--bad)') +
+      '"></div><span class="ev-time">' + e.t + '</span><span class="ev-msg">' + e.msg + '</span></div>';
+  }).join('');
+}
+
+function drawSpark(samples) {
+  var svg = document.getElementById('spark');
+  var valid = samples.filter(function(s) { return s.ms >= 0; });
+  if (!valid.length) { svg.innerHTML = ''; return; }
+  var W = 600, H = 60, pad = 4;
+  var maxV = Math.max.apply(null, valid.map(function(s) { return s.ms; }).concat([100]));
+  var step = W / Math.max(samples.length - 1, 1);
+  var path = '';
+  samples.forEach(function(s, i) {
+    if (s.ms < 0) return;
+    var x = (i * step).toFixed(1);
+    var y = (pad + (1 - s.ms / maxV) * (H - pad * 2)).toFixed(1);
+    path += (path === '' || (samples[i-1] && samples[i-1].ms < 0)) ? ('M' + x + ',' + y) : ('L' + x + ',' + y);
+  });
+  svg.innerHTML = '<path d="' + path + '" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>';
+}
+
+function poll() {
+  fetch('/api/status').then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }).then(function(d) {
+    // LED alleen updaten als die verandert
+    var led = document.getElementById('led');
+    var newLedClass = 'led ' + (d.led || 'unknown');
+    if (led.className !== newLedClass) led.className = newLedClass;
+    var labels = {good: 'uitstekend', warn: 'acceptabel', bad: 'hoog', unknown: 'meten...'};
+    var last = (d.samples || []).filter(function(s) { return s.ms >= 0; }).slice(-1)[0];
+    setText('led-label', labels[d.led] || d.led);
+    setText('led-ms', last ? last.ms.toFixed(1) + ' ms' : '');
+
+    // Metrics
+    setHTML('m-lat', last ? last.ms.toFixed(1) + '<span class="card-unit">ms</span>' : '—');
+    setText('m-avg', d.avg_ms ? 'gem. ' + d.avg_ms.toFixed(1) + ' ms' : 'gem. —');
+    setHTML('m-jit', (d.jitter_ms || 0).toFixed(1) + '<span class="card-unit">ms</span>');
+    setHTML('m-loss', (d.loss_pct || 0).toFixed(1) + '<span class="card-unit">%</span>');
+    setText('m-drop', String(d.dropouts || 0));
+
+    if ((d.samples || []).length !== lastSampleCount) {
+      lastSampleCount = (d.samples || []).length;
+      drawSpark((d.samples || []).slice(-60));
+    }
+
+    // LED events
+    if (d.led !== lastLed) {
+      if (d.led === 'bad') addEvent('bad', 'Verbinding verslechterd');
+      else if (d.led === 'warn') addEvent('warn', 'Verhoogde latency');
+      else if (d.led === 'good' && lastLed !== 'unknown') addEvent('good', 'Verbinding hersteld');
+      lastLed = d.led;
+    }
+
+    // Startup log
+    if (d.startup_log && d.startup_log.length) {
+      var logEl = document.getElementById('startup-log');
+      logEl.style.display = 'block';
+      logEl.innerHTML = d.startup_log.map(function(line) {
+        var cls = line.charAt(0) === '\u2713' ? 'log-ok' : line.charAt(0) === '\u26a0' ? 'log-warn' : 'log-info';
+        return '<div class="' + cls + '">' + line + '</div>';
+      }).join('');
+      logEl.scrollTop = logEl.scrollHeight;
+      if (d.led === 'good') {
+        setTimeout(function() { logEl.style.display = 'none'; }, 15000);
+      }
+    }
+
+    // Tunnels
+    if (d.tunnels && d.tunnels.length) {
+      setHTML('tunnel-grid', d.tunnels.map(function(t) {
+        var cls = t.up ? 'up' : 'down';
+        var ms = (t.up && t.latency_ms > 0) ? t.latency_ms.toFixed(1) + ' ms' : '';
+        return '<div class="tunnel-card"><div class="tunnel-top"><div class="tunnel-led ' + cls + '"></div>' +
+          '<span class="tunnel-name">' + t.name + '</span>' +
+          (ms ? '<span class="tunnel-ms">' + ms + '</span>' : '') + '</div>' +
+          '<div class="tunnel-ports">:' + t.local_port + ' \u2192 server:' + t.server_port + '</div></div>';
+      }).join(''));
+    } else {
+      setHTML('tunnel-grid',
+        '<div class="tunnel-card"><div class="tunnel-top"><div class="tunnel-led unknown"></div><span class="tunnel-name">Geen tunnels geconfigureerd</span></div></div>');
+    }
+
+  }).catch(function(e) {
+    document.getElementById('led').className = 'led bad';
+    document.getElementById('led-label').textContent = 'geen verbinding';
+  }).finally(function() {
+    setTimeout(poll, 1000);
+  });
+}
+
+function loadCmds() {
+  fetch('/api/cmd/list').then(function(r) {
+    if (!r.ok) throw new Error('niet ok');
+    return r.json();
+  }).then(function(cmds) {
+    if (!cmds || cmds.length === 0) {
+      document.getElementById('cmd-grid').innerHTML =
+        '<span style="color:var(--muted);font-size:13px">Geen commando\'s geconfigureerd</span>';
+      return;
+    }
+    document.getElementById('cmd-grid').innerHTML = cmds.map(function(name) {
+      var lower = name.toLowerCase();
+      var cls = lower.indexOf('stop') >= 0 ? 'stop' :
+                (lower.indexOf('restart') >= 0 || lower.indexOf('reboot') >= 0) ? 'restart' : 'start';
+      var label = name.replace(/-/g, ' ');
+      return '<button class="cmd-btn ' + cls + '" onclick="runCmd(\'' + name + '\')">' +
+        '<div class="cmd-dot ' + cls + '"></div>' + label + '</button>';
+    }).join('');
+  }).catch(function() {
+    setTimeout(loadCmds, 3000);
+  });
+}
+
+function runCmd(name) {
+  var out = document.getElementById('cmd-output');
+  var btns = document.querySelectorAll('.cmd-btn');
+  btns.forEach(function(b) { b.disabled = true; });
+  out.style.display = 'block';
+  out.textContent = name + ' uitvoeren...';
+  fetch('/api/cmd/run?name=' + encodeURIComponent(name)).then(function(r) {
+    return r.json();
+  }).then(function(d) {
+    out.textContent = d.output || '(geen output) — commando uitgevoerd';
+  }).catch(function(e) {
+    out.textContent = '[FOUT] ' + e.message;
+  }).finally(function() {
+    btns.forEach(function(b) { b.disabled = false; });
+    setTimeout(function() { out.style.display = 'none'; }, 8000);
+  });
+}
+
+async function runDiag() {
+  var btn = document.getElementById('check-btn');
+  var list = document.getElementById('check-list');
+  var note = document.getElementById('check-note');
+  btn.disabled = true;
+  btn.textContent = 'Bezig...';
+  list.style.display = 'none';
+  note.textContent = '';
+  try {
+    var r = await fetch('/api/diag');
+    var d = await r.json();
+    if (d.error) throw new Error(d.error);
+    if (d.checks) {
+      list.innerHTML = d.checks.map(function(c) {
+        var st = c.ok ? 'ok' : 'fail';
+        return '<div class="check-row"><span class="check-name">' + c.name + '</span>' +
+          '<span style="font-weight:500;margin-right:8px">' + c.value + '</span>' +
+          '<span class="badge ' + st + '">' + (c.ok ? 'goed' : 'probleem') + '</span></div>';
+      }).join('');
+      list.style.display = 'block';
+    }
+    note.textContent = d.checks && d.checks.every(function(c) { return c.ok; }) ?
+      'Alle checks geslaagd.' : 'Een of meer checks hebben aandacht nodig.';
+  } catch(e) {
+    note.textContent = 'Diagnostiek mislukt: ' + e.message;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Opnieuw controleren';
+}
+
+poll();
+loadCmds();
+</script>
+</body>
+</html>
