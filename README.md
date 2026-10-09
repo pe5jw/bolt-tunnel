@@ -42,6 +42,12 @@ cd bolt-tunnel
 build.bat
 ```
 
+
+wget https://github.com/pe5jw/bolt-tunnel/releases/download/v1.0.0/install.sh
+bash install.sh
+cd ~/bolttunnel
+nano start-client.sh   # hostname en server aanpassen
+./start-client.sh
 ## Licentie
 
 MIT
