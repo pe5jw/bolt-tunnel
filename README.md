@@ -1,146 +1,47 @@
-# tailmon — zero-client tailnet verbindingsmonitor
+# Bolttunnel
 
-Geen Tailscale installatie nodig. Beide kanten (client en server) embedden
-`tsnet` en registreren zichzelf als node op het tailnet.
+Bolttunnel maakt een beveiligde tunnel via een Tailscale tailnet, zonder dat Tailscale geïnstalleerd hoeft te zijn op de client of server. Ideaal voor het op afstand bereiken van services zoals SDR-ontvangers, TCI-streams en andere lokale apparaten.
 
-## Architectuur
+## Kenmerken
 
-```
-Client machine                    Tailscale control          Server / subnet router
-┌─────────────────────┐          ┌────────────────┐         ┌──────────────────────────┐
-│  tailmon-client      │◄──auth──►│ login.tailscale│◄──auth──│  tailmon-server           │
-│  ┌───────────────┐  │          └────────────────┘         │  ┌────────────────────┐   │
-│  │ tsnet.Server  │  │                                      │  │ tsnet.Server       │   │
-│  │ (embedded TS) │◄─┼─── WireGuard P2P (of DERP) ────────►│  │ (embedded TS)      │   │
-│  └───────────────┘  │                                      │  └────────────────────┘   │
-│  ┌───────────────┐  │          Elke seconde:               │  ┌────────────────────┐   │
-│  │ monitor loop  │──┼── GET /ping ──────────────────────── ►│  │ GET /ping → {ts}  │   │
-│  │ meet RTT      │◄─┼── 200 OK ──────────────────────────  │  └────────────────────┘   │
-│  └───────────────┘  │                                      │  ┌────────────────────┐   │
-│  ┌───────────────┐  │          Op verzoek:                 │  │ GET /diag → json  │   │
-│  │ web GUI       │  │── GET /diag ──────────────────────── ►│  └────────────────────┘   │
-│  │ localhost:8080│  │                                      │  ┌────────────────────┐   │
-│  └───────────────┘  │                                      │  │ → Remote LAN       │   │
-└─────────────────────┘                                      │  │   192.168.x.x/24   │   │
-                                                             └──────────────────────────┘
-```
+- Geen Tailscale installatie nodig — werkt via embedded tsnet
+- TCP tunnels naar lokale services en LAN-apparaten
+- Verbindingsmonitor GUI in de browser (latency, jitter, packet loss)
+- Server beheer knoppen vanuit de client GUI
+- Werkt op Windows, Linux en Raspberry Pi
 
-## Voordelen van tsnet
+## Snel starten
 
-- **Geen Tailscale installatie** nodig op client of server
-- **Geen root/admin rechten** vereist
-- **Geen systeem-daemon** (`tailscaled`) nodig
-- **Eén binary** per kant — makkelijk te distribueren
-- De verbinding **gaat altijd via het tailnet** — ook de `/ping` meting
+### Download
+Ga naar [Releases](https://github.com/pe5jw/bolt-tunnel/releases) en download de juiste versie:
 
-## Setup
+| Platform | Bestand |
+|---|---|
+| Windows | bolttunnel-windows.zip |
+| Linux x86_64 | bolttunnel-linux-amd64.zip |
+| Raspberry Pi 4/5 | bolttunnel-linux-arm64.zip |
 
-### 1. Tailscale auth key aanmaken
+### Vereisten
+- Een [Tailscale](https://tailscale.com) account
+- Een auth key van https://login.tailscale.com/admin/settings/keys
 
-Ga naar https://login.tailscale.com/admin/settings/keys en maak een
-reusable auth key aan (of ephemeral voor éénmalig gebruik).
+### Installatie en gebruik
+Zie [HANDLEIDING.md](HANDLEIDING.md) voor volledige instructies, inclusief:
+- Tailscale account en auth key aanmaken
+- Server en client instellen
+- Meerdere servers
+- Linux/Pi installatie met systemd
 
-### 2. Server deployen (op de subnet router / gateway)
+## Bouwen vanuit broncode
 
-```bash
-cd cmd/server
-go build -o tailmon-server .
+Vereisten: [Go 1.21+](https://go.dev/dl/)
 
-# Met auth key als env variabele (aanbevolen):
-TS_AUTHKEY=tskey-auth-xxxx ./tailmon-server \
-  --hostname tailmon-server \
-  --addr :7780
-
-# Of zonder key — eerste run opent een auth URL in de terminal:
-./tailmon-server
+```bat
+git clone https://github.com/pe5jw/bolt-tunnel.git
+cd bolt-tunnel
+build.bat
 ```
 
-### 3. Client draaien
+## Licentie
 
-```bash
-cd cmd/client
-go build -o tailmon-client .
-
-TS_AUTHKEY=tskey-auth-xxxx ./tailmon-client \
-  --hostname tailmon-client \
-  --server tailmon-server \
-  --gui localhost:8080
-
-# Open de GUI:
-open http://localhost:8080
-```
-
-## Endpoints (server)
-
-| Endpoint | Methode | Doel | Gewicht |
-|----------|---------|------|---------|
-| `/ping`  | GET     | Latency meting — minimale response | ~100 bytes |
-| `/diag`  | GET     | Uitgebreide diagnostiek — peers, DERP, checks | ~2 KB |
-
-## Endpoints (client, lokaal)
-
-| Endpoint     | Doel |
-|--------------|------|
-| `/api/status` | Live status snapshot — de GUI pollt dit elke seconde |
-| `/api/diag`  | Proxy naar server `/diag` — alleen op verzoek |
-| `/`          | Web GUI |
-
-## De GUI embedden in je eigen app
-
-Als je de monitor wilt embedden in een bestaande Go app:
-
-```go
-import "github.com/yourname/tailmon/monitor"
-
-// Start de monitor (één keer, bij app start)
-mon := monitor.New(monitor.Config{
-    TSNet:      yourTsnetServer,  // je bestaande tsnet.Server
-    ServerHost: "tailmon-server",
-    Interval:   time.Second,
-})
-mon.Start(ctx)
-
-// Status LED ophalen (non-blocking, geen latency impact)
-snap := mon.Snapshot()
-// snap.LED → "good" | "warn" | "bad" | "unknown"
-// snap.AvgMS → gemiddelde latency
-// snap.LossPct → packet loss %
-
-// HTTP handlers registreren
-mux.Handle("/api/monitor/status", mon.StatusHandler())
-mux.Handle("/api/monitor/diag",   mon.DiagHandler())
-```
-
-## Latency impact van de monitor zelf
-
-De monitor doet één HTTP GET per seconde via het al bestaande
-WireGuard-pad. Dit is verwaarloosbaar:
-- Geen extra verbinding — hergebruikt het bestaande tsnet pad
-- Request body: 0 bytes
-- Response body: ~60 bytes JSON
-- CPU: < 0.1% op een moderne CPU
-
-## Integratie in bestaande Go app (zonder aparte client binary)
-
-Als je app al tsnet gebruikt, voeg je alleen de monitor goroutine toe:
-
-```go
-// Eén goroutine, één HTTP client, één ticker
-go func() {
-    client := &http.Client{
-        Transport: &http.Transport{DialContext: tsnetSrv.Dial},
-        Timeout: 4 * time.Second,
-    }
-    for range time.NewTicker(time.Second).C {
-        t0 := time.Now()
-        resp, err := client.Get("http://tailmon-server:7780/ping")
-        rtt := time.Since(t0)
-        if err != nil {
-            status.Add(-1)
-        } else {
-            resp.Body.Close()
-            status.Add(rtt.Seconds() * 1000)
-        }
-    }
-}()
-```
+MIT
