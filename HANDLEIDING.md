@@ -49,3 +49,73 @@ Kopie van start-client.bat met:
 ## Veiligheid
 - Sla de auth key NOOIT op in een bat-bestand dat je deelt
 - Trek gecompromitteerde keys in via https://login.tailscale.com/admin/settings/keys
+
+## 8. Linux installatie via GitHub release
+
+### Download (kies de juiste versie)
+
+```bash
+# Linux amd64 (PC/laptop/server):
+wget https://github.com/pe5jw/bolt-tunnel/releases/download/v1.0.0/bolttunnel-linux-amd64.zip
+
+# Raspberry Pi 4/5 (arm64):
+wget https://github.com/pe5jw/bolt-tunnel/releases/download/v1.0.0/bolttunnel-linux-arm64.zip
+```
+
+### Uitpakken en uitvoerbaar maken
+
+```bash
+unzip bolttunnel-linux-amd64.zip -d bolttunnel
+cd bolttunnel
+chmod +x bolttunnel-client-linux-amd64 bolttunnel-server-linux-amd64
+```
+
+### Starten als client
+
+```bash
+./bolttunnel-client-linux-amd64 \
+  --hostname bolttunnel-client \
+  --server bolttunnel-server \
+  --port 7780 \
+  --listen :7781 \
+  --gui 127.0.0.1:8080 \
+  --nowindow
+```
+
+Open browser op http://127.0.0.1:8080
+
+### Automatisch starten met systemd
+
+```bash
+sudo nano /etc/systemd/system/bolttunnel.service
+```
+
+Inhoud:
+
+```ini
+[Unit]
+Description=Bolttunnel client
+After=network.target
+
+[Service]
+ExecStart=/home/pi/bolttunnel/bolttunnel-client-linux-arm64 \
+  --hostname bolttunnel-client \
+  --server bolttunnel-server \
+  --port 7780 \
+  --listen :7781 \
+  --gui 127.0.0.1:8080 \
+  --nowindow
+Restart=always
+RestartSec=10
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable bolttunnel
+sudo systemctl start bolttunnel
+sudo systemctl status bolttunnel
+```
