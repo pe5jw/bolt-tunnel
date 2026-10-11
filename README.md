@@ -1,14 +1,16 @@
 # Bolttunnel
 
-Bolttunnel maakt een beveiligde tunnel via een Tailscale tailnet, zonder dat Tailscale geïnstalleerd hoeft te zijn op de client of server. Ideaal voor het op afstand bereiken van services zoals SDR-ontvangers, TCI-streams en andere lokale apparaten.
+Bolttunnel maakt beveiligde TCP-tunnels via een Tailscale tailnet, zonder dat Tailscale geïnstalleerd hoeft te worden op de client of server. Gebouwd voor Windows en Linux/Raspberry Pi, ideaal voor SDR-ontvangers, TCI-streams en andere lokale services.
 
 ## Kenmerken
 
-- Geen Tailscale installatie nodig — werkt via embedded tsnet
-- TCP tunnels naar lokale services en LAN-apparaten
-- Verbindingsmonitor GUI in de browser (latency, jitter, packet loss)
-- Server beheer knoppen vanuit de client GUI
-- Werkt op Windows, Linux en Raspberry Pi
+- **Geen Tailscale installatie nodig** — werkt via embedded [tsnet](https://pkg.go.dev/tailscale.com/tsnet)
+- **TCP-tunnels** naar lokale services en LAN-apparaten (configureerbaar via flags of server-config)
+- **Verbindingsmonitor GUI** in de browser — latency, jitter, packet loss, dropouts, sparkline
+- **Drie tabs**: Status | Verbinding (diagnostics) | Beheer (server commando's)
+- **Minimaliseerknop** in de statusbalk — inklapbaar met ▲/▼
+- **Server beheer** — start/stop/herstart scripts op de server via de client GUI
+- Werkt op **Windows, Linux en Raspberry Pi** (arm64)
 
 ## Snel starten
 
@@ -22,7 +24,7 @@ Ga naar [Releases](https://github.com/pe5jw/bolt-tunnel/releases) en download de
 | Raspberry Pi 4/5 | bolttunnel-linux-arm64.zip |
 
 ### Vereisten
-- Een [Tailscale](https://tailscale.com) account
+- Een [Tailscale](https://tailscale.com) account (gratis tier volstaat)
 - Een auth key van https://login.tailscale.com/admin/settings/keys
 
 ### Installatie en gebruik
@@ -34,7 +36,7 @@ Zie [HANDLEIDING.md](HANDLEIDING.md) voor volledige instructies, inclusief:
 
 ## Bouwen vanuit broncode
 
-Vereisten: [Go 1.21+](https://go.dev/dl/)
+Vereisten: [Go 1.21+](https://go.dev/dl/) (of laat `setup.bat` dit automatisch installeren)
 
 ```bat
 git clone https://github.com/pe5jw/bolt-tunnel.git
@@ -42,12 +44,31 @@ cd bolt-tunnel
 build.bat
 ```
 
+Linux:
+```bash
+git clone https://github.com/pe5jw/bolt-tunnel.git
+cd bolt-tunnel
+cd cmd/server && go build -o ../../bin/bolttunnel-server .
+cd ../client  && go build -o ../../bin/bolttunnel-client .
+```
 
-wget https://github.com/pe5jw/bolt-tunnel/releases/download/v1.0.0/install.sh
-bash install.sh
-cd ~/bolttunnel
-nano start-client.sh   # hostname en server aanpassen
-./start-client.sh
+## Architectuur
+
+```
+[Client PC]                          [Server / Pi]
+bolttunnel-client.exe                bolttunnel-server
+  tsnet (tailscale embedded)   ←→    tsnet (tailscale embedded)
+  localhost:POORT ←→ TCP-tunnel ←→   localhost:DOEL_POORT
+  GUI: http://127.0.0.1:8080         GUI: http://localhost:8081
+```
+
+Beide processen doen mee aan het tailnet zonder Tailscale daemon. Tunnels lopen volledig versleuteld over WireGuard.
+
 ## Licentie
 
-MIT
+MIT — zie [LICENSE](LICENSE).  
+Bevat [tailscale.com/tsnet](https://pkg.go.dev/tailscale.com/tsnet) onder BSD 3-Clause licentie.
+
+---
+
+[English README](README-EN.md)

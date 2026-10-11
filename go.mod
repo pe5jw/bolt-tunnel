@@ -1,4 +1,4 @@
-module github.com/yourname/bolttunnel
+module github.com/pe5jw/bolt-tunnel
 
 go 1.23.1
 
