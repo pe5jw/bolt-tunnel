@@ -56,10 +56,10 @@ Kopie van start-client.bat met:
 
 ```bash
 # Linux amd64 (PC/laptop/server):
-wget https://github.com/pe5jw/bolt-tunnel/releases/download/v1.0.0/bolttunnel-linux-amd64.zip
+wget https://github.com/pe5jw/bolt-tunnel/releases/download/v1.1.0/bolttunnel-linux-amd64.zip
 
 # Raspberry Pi 4/5 (arm64):
-wget https://github.com/pe5jw/bolt-tunnel/releases/download/v1.0.0/bolttunnel-linux-arm64.zip
+wget https://github.com/pe5jw/bolt-tunnel/releases/download/v1.1.0/bolttunnel-linux-arm64.zip
 ```
 
 ### Uitpakken en uitvoerbaar maken

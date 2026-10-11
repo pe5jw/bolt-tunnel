@@ -98,6 +98,18 @@ Both processes join the tailnet without a Tailscale daemon. All tunnel traffic i
 - The build script (`build.bat`) prompts for the key interactively and clears it immediately after use — it is never written to disk
 - Tailscale state (node keys, IPs) is stored locally in a `tsnet-state/` directory — this directory is excluded from git
 
+## Changelog
+
+### v1.1.0 (2026-10-11)
+- GUI: three tabs — Status, Connection (diagnostics), Management (server commands)
+- GUI: minimize button ▲/▼ in status bar, state persisted in localStorage
+- Server management moved to its own tab (was in Status tab)
+- Fixed go.mod module name
+- Updated READMEs (NL + EN)
+
+### v1.0.0
+- Initial release
+
 ## License
 
 MIT — see [LICENSE](LICENSE).  

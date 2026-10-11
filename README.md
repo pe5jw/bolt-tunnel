@@ -64,6 +64,18 @@ bolttunnel-client.exe                bolttunnel-server
 
 Beide processen doen mee aan het tailnet zonder Tailscale daemon. Tunnels lopen volledig versleuteld over WireGuard.
 
+## Changelog
+
+### v1.1.0 (2026-10-11)
+- GUI: drie tabs — Status, Verbinding (diagnostics), Beheer (server commando's)
+- GUI: minimaliseerknop ▲/▼ in statusbalk, staat onthouden in localStorage
+- Server beheer verplaatst naar eigen tab (was in Status tab)
+- go.mod module naam gecorrigeerd
+- README bijgewerkt (NL + EN)
+
+### v1.0.0
+- Eerste release
+
 ## Licentie
 
 MIT — zie [LICENSE](LICENSE).  

@@ -5,7 +5,7 @@
 set -e
 
 REPO="pe5jw/bolt-tunnel"
-VERSION="v1.0.0"
+VERSION="v1.1.0"
 INSTALL_DIR="${1:-$HOME/bolttunnel}"
 
 # Detecteer architectuur
