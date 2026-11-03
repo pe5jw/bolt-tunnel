@@ -76,6 +76,12 @@ Beide processen doen mee aan het tailnet zonder Tailscale daemon. Tunnels lopen 
 ### v1.0.0
 - Eerste release
 
+## Doneren
+
+Vind je Bolttunnel nuttig? Help de ontwikkeling met een kleine donatie — elke koffie telt! ☕
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/contestpusher)
+
 ## Licentie
 
 MIT — zie [LICENSE](LICENSE).  

@@ -110,6 +110,12 @@ Both processes join the tailnet without a Tailscale daemon. All tunnel traffic i
 ### v1.0.0
 - Initial release
 
+## Donate
+
+Finding Bolttunnel useful? Help support development with a small donation — every coffee counts! ☕
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/contestpusher)
+
 ## License
 
 MIT — see [LICENSE](LICENSE).  
